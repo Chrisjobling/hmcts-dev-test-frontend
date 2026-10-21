@@ -38,3 +38,5 @@ version
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+bin/src/main/resources/localhost-ssl/localhost.crt
+bin/src/main/resources/localhost-ssl/localhost.key
