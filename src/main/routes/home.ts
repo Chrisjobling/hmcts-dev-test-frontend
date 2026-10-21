@@ -1,3 +1,5 @@
+import { buildPagination, parsePageNumber } from '../modules/pagination';
+
 import axios from 'axios';
 import type { Application, Response } from 'express';
 
@@ -9,6 +11,14 @@ interface CaseRecord {
   status: string;
   createdDate: string;
   dueDateTime?: string | null;
+}
+
+interface CasePage {
+  content: CaseRecord[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }
 
 interface CreateTaskForm {
@@ -32,6 +42,7 @@ interface HomeOptions {
   notice?: string;
   form?: CreateTaskForm;
   statusFilter?: string;
+  page?: number;
 }
 
 interface TaskPageOptions {
@@ -41,6 +52,9 @@ interface TaskPageOptions {
 }
 
 const casesApiUrl = 'http://localhost:4000/cases';
+const pageSize = 10;
+// The API returns a 500 once the row offset (page * size) no longer fits in a 32-bit integer
+const maxPageNumber = Math.floor((2 ** 31 - 1) / pageSize) + 1;
 const defaultStatus = 'Open';
 const availableStatuses = [defaultStatus, 'In-progress', 'Closed'];
 const emptyForm: CreateTaskForm = {
@@ -73,14 +87,51 @@ function toTaskViewModel(task: CaseRecord) {
   };
 }
 
-async function getTasks(statusFilter: string): Promise<CaseRecord[]> {
-  const response = statusFilter
-    ? await axios.get<CaseRecord[]>(casesApiUrl, { params: { status: statusFilter } })
-    : await axios.get<CaseRecord[]>(casesApiUrl);
-  if (!Array.isArray(response.data)) {
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
+function isCasePage(data: unknown): data is CasePage {
+  if (data === null || typeof data !== 'object') {
+    return false;
+  }
+  const { content, page, size, totalElements, totalPages } = data as Record<string, unknown>;
+  return Array.isArray(content) && [page, size, totalElements, totalPages].every(isCount);
+}
+
+async function getTasks(statusFilter: string, pageNumber: number): Promise<CasePage> {
+  const response = await axios.get<unknown>(casesApiUrl, {
+    params: {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      // The API's pages are zero-based, whereas the page numbers shown to users start at 1
+      page: pageNumber - 1,
+      size: pageSize,
+    },
+  });
+  if (!isCasePage(response.data)) {
     throw new TypeError('Cases endpoint returned an unexpected response');
   }
   return response.data;
+}
+
+function listUrl(statusFilter: string, pageNumber = 1): string {
+  const params = new URLSearchParams();
+  if (statusFilter) {
+    params.set('status', statusFilter);
+  }
+  if (pageNumber > 1) {
+    params.set('page', String(pageNumber));
+  }
+  const query = params.toString();
+  return query ? `/?${query}` : '/';
+}
+
+function summariseTasks({ page, size, totalElements }: CasePage, shown: number): string {
+  if (totalElements === 1) {
+    return 'Showing 1 task';
+  }
+  const first = page * size + 1;
+  return `Showing ${first} to ${first + shown - 1} of ${totalElements} tasks`;
 }
 
 async function getTask(id: string): Promise<CaseRecord> {
@@ -107,10 +158,22 @@ function taskNotice(value: unknown): string | undefined {
 
 async function renderHome(res: Response, options: HomeOptions = {}): Promise<void> {
   const statusFilter = options.statusFilter ?? '';
+  const pageNumber = options.page ?? 1;
   try {
-    const tasks = (await getTasks(statusFilter)).map(toTaskViewModel);
+    const casePage = await getTasks(statusFilter, pageNumber);
+    if (pageNumber > 1 && casePage.content.length === 0) {
+      // The page no longer exists (or never did), so send the user back to the first page of the same results
+      res.redirect(302, listUrl(statusFilter));
+      return;
+    }
+
+    const tasks = casePage.content.map(toTaskViewModel);
     res.status(options.statusCode ?? 200).render('home', {
       tasks,
+      taskSummary: tasks.length ? summariseTasks(casePage, tasks.length) : undefined,
+      pagination: buildPagination(casePage.page + 1, casePage.totalPages, targetPage =>
+        listUrl(statusFilter, targetPage)
+      ),
       error: options.error,
       notice: options.notice,
       form: options.form ?? emptyForm,
@@ -155,6 +218,7 @@ export default function (app: Application): void {
     await renderHome(res, {
       notice: listNotice(req.query.notice),
       statusFilter: formValue(req.query.status),
+      page: parsePageNumber(req.query.page, maxPageNumber),
     });
   });
 

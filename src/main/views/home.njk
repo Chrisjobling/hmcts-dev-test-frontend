@@ -1,4 +1,7 @@
 {% extends "template.njk" %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{% block pageTitle %}Tasks{% if pagination %} (page {{ pagination.currentPage }} of {{ pagination.totalPages }}){% endif %}{% endblock %}
 
 {% block content %}
   <h1 class="govuk-heading-xl">Tasks</h1>
@@ -46,6 +49,7 @@
     </form>
 
     {% if tasks.length %}
+      <p class="govuk-body">{{ taskSummary }}</p>
       <table class="govuk-table">
         <caption class="govuk-table__caption govuk-table__caption--m">
           {% if statusFilter %}Tasks with status: {{ statusFilter }}{% else %}All tasks{% endif %}
@@ -77,6 +81,9 @@
           {% endfor %}
         </tbody>
       </table>
+      {% if pagination %}
+        {{ govukPagination(pagination) }}
+      {% endif %}
     {% else %}
       {% if statusFilter %}
         <p class="govuk-body">There are no tasks with status "{{ statusFilter }}".</p>
