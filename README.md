@@ -16,4 +16,9 @@ To begin with, you should be able to run this by running:
 
 You can change the structure however you like!
 
+## Tests
+To run the tests run the commands :
+Unit tests : `yarn test:unit`
+Route tests : `yarn test:routes`
+
 
