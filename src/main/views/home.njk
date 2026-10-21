@@ -23,10 +23,33 @@
   {% endif %}
 
   <section aria-labelledby="tasks-heading">
-    <h2 class="govuk-heading-l" id="tasks-heading">All tasks</h2>
+    <h2 class="govuk-heading-l" id="tasks-heading">
+      {% if statusFilter %}Tasks with status: {{ statusFilter }}{% else %}All tasks{% endif %}
+    </h2>
+
+    <form action="/" method="get">
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="status">Filter by status</label>
+        <select class="govuk-select" id="status" name="status">
+          <option value="" {% if not statusFilter %}selected{% endif %}>All statuses</option>
+          {% for status in statusOptions %}
+            <option value="{{ status }}" {% if status == statusFilter %}selected{% endif %}>
+              {{ status }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="govuk-button" data-module="govuk-button" type="submit">Apply filter</button>
+      {% if statusFilter %}
+        <a class="govuk-link" href="/">Clear filter</a>
+      {% endif %}
+    </form>
+
     {% if tasks.length %}
       <table class="govuk-table">
-        <caption class="govuk-table__caption govuk-table__caption--m">All tasks</caption>
+        <caption class="govuk-table__caption govuk-table__caption--m">
+          {% if statusFilter %}Tasks with status: {{ statusFilter }}{% else %}All tasks{% endif %}
+        </caption>
         <thead class="govuk-table__head">
           <tr class="govuk-table__row">
             <th scope="col" class="govuk-table__header">Case number</th>
@@ -55,7 +78,11 @@
         </tbody>
       </table>
     {% else %}
-      <p class="govuk-body">There are no tasks to display.</p>
+      {% if statusFilter %}
+        <p class="govuk-body">There are no tasks with status "{{ statusFilter }}".</p>
+      {% else %}
+        <p class="govuk-body">There are no tasks to display.</p>
+      {% endif %}
     {% endif %}
   </section>
 

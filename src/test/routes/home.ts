@@ -100,6 +100,30 @@ describe('Home page', () => {
     expect(response.text).not.toContain('<table');
   });
 
+  test('filters tasks by status through the cases endpoint', async () => {
+    mockedAxiosGet.mockResolvedValue(
+      axiosResponse([
+        {
+          id: 'task-closed',
+          caseNumber: 'CASE-CLOSED',
+          title: 'Closed task',
+          description: 'A completed task',
+          status: 'Closed',
+          createdDate: '2026-10-21',
+        },
+      ])
+    );
+
+    const response = await request(app).get('/?status=Closed').expect(200);
+
+    expect(mockedAxiosGet).toHaveBeenCalledWith('http://localhost:4000/cases', {
+      params: { status: 'Closed' },
+    });
+    expect(response.text).toContain('Tasks with status: Closed');
+    expect(response.text).toMatch(/<option value="Closed" selected>[\s\S]*?Closed\s*<\/option>/);
+    expect(response.text).toContain('Closed task');
+  });
+
   test('shows an error when the cases endpoint returns an unexpected response', async () => {
     mockedAxiosGet.mockResolvedValue(axiosResponse({ message: 'Unexpected response' }));
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -140,6 +164,8 @@ describe('Home page', () => {
     expect(response.text).toContain('Task details');
     expect(response.text).toContain('Not provided');
     expect(response.text).toContain('2026-11-21T17:00:00Z');
+    expect(response.text).toContain('<option value="In-progress"');
+    expect(response.text).not.toContain('In progress');
     expect(response.text).toContain('action="/tasks/task-003/status"');
     expect(response.text).toContain('action="/tasks/task-003/delete"');
   });
@@ -209,10 +235,12 @@ describe('Home page', () => {
     const response = await request(app)
       .post('/tasks/task-006/status')
       .type('form')
-      .send({ status: 'Closed' })
+      .send({ status: 'In-progress' })
       .expect(303);
 
-    expect(mockedAxiosPatch).toHaveBeenCalledWith('http://localhost:4000/cases/task-006/status', { status: 'Closed' });
+    expect(mockedAxiosPatch).toHaveBeenCalledWith('http://localhost:4000/cases/task-006/status', {
+      status: 'In-progress',
+    });
     expect(response.headers.location).toBe('/tasks/task-006?notice=status-updated');
   });
 

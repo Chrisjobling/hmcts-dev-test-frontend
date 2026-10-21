@@ -31,6 +31,7 @@ interface HomeOptions {
   error?: string;
   notice?: string;
   form?: CreateTaskForm;
+  statusFilter?: string;
 }
 
 interface TaskPageOptions {
@@ -41,7 +42,7 @@ interface TaskPageOptions {
 
 const casesApiUrl = 'http://localhost:4000/cases';
 const defaultStatus = 'Open';
-const availableStatuses = [defaultStatus, 'In progress', 'Closed'];
+const availableStatuses = [defaultStatus, 'In-progress', 'Closed'];
 const emptyForm: CreateTaskForm = {
   caseNumber: '',
   title: '',
@@ -51,6 +52,10 @@ const emptyForm: CreateTaskForm = {
 
 function formValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function statusOptionsFor(selectedStatus = ''): string[] {
+  return [...new Set([...availableStatuses, ...(selectedStatus ? [selectedStatus] : [])])];
 }
 
 function toTaskViewModel(task: CaseRecord) {
@@ -68,8 +73,10 @@ function toTaskViewModel(task: CaseRecord) {
   };
 }
 
-async function getTasks(): Promise<CaseRecord[]> {
-  const response = await axios.get<CaseRecord[]>(casesApiUrl);
+async function getTasks(statusFilter: string): Promise<CaseRecord[]> {
+  const response = statusFilter
+    ? await axios.get<CaseRecord[]>(casesApiUrl, { params: { status: statusFilter } })
+    : await axios.get<CaseRecord[]>(casesApiUrl);
   if (!Array.isArray(response.data)) {
     throw new TypeError('Cases endpoint returned an unexpected response');
   }
@@ -99,13 +106,16 @@ function taskNotice(value: unknown): string | undefined {
 }
 
 async function renderHome(res: Response, options: HomeOptions = {}): Promise<void> {
+  const statusFilter = options.statusFilter ?? '';
   try {
-    const tasks = (await getTasks()).map(toTaskViewModel);
+    const tasks = (await getTasks(statusFilter)).map(toTaskViewModel);
     res.status(options.statusCode ?? 200).render('home', {
       tasks,
       error: options.error,
       notice: options.notice,
       form: options.form ?? emptyForm,
+      statusFilter,
+      statusOptions: statusOptionsFor(statusFilter),
     });
   } catch (error) {
     console.error('Error loading tasks:', error);
@@ -115,6 +125,8 @@ async function renderHome(res: Response, options: HomeOptions = {}): Promise<voi
         ? `${options.error} The task list could not be loaded. Please try again later.`
         : 'Tasks could not be loaded. Please try again later.',
       form: options.form ?? emptyForm,
+      statusFilter,
+      statusOptions: statusOptionsFor(statusFilter),
     });
   }
 }
@@ -126,7 +138,7 @@ async function renderTaskPage(res: Response, id: string, options: TaskPageOption
       task,
       error: options.error,
       notice: options.notice,
-      statusOptions: [...new Set([...availableStatuses, task.status])],
+      statusOptions: statusOptionsFor(task.status),
     });
   } catch (error) {
     console.error('Error loading task:', error);
@@ -140,7 +152,10 @@ async function renderTaskPage(res: Response, id: string, options: TaskPageOption
 
 export default function (app: Application): void {
   app.get('/', async (req, res) => {
-    await renderHome(res, { notice: listNotice(req.query.notice) });
+    await renderHome(res, {
+      notice: listNotice(req.query.notice),
+      statusFilter: formValue(req.query.status),
+    });
   });
 
   app.post('/tasks', async (req, res) => {
