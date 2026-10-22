@@ -72,6 +72,24 @@ function statusOptionsFor(selectedStatus = ''): string[] {
   return [...new Set([...availableStatuses, ...(selectedStatus ? [selectedStatus] : [])])];
 }
 
+const dateTimeFormat = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+function formatDateTime(value?: string | null): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : dateTimeFormat.format(date).replace(' at ', ', ');
+}
+
 function toTaskViewModel(task: CaseRecord) {
   const identifier = task.id ?? task.caseNumber;
   if (identifier === undefined || identifier === null || String(identifier).trim() === '') {
@@ -83,7 +101,8 @@ function toTaskViewModel(task: CaseRecord) {
     urlId: encodeURIComponent(String(identifier)),
     caseNumberDisplay: String(task.caseNumber ?? identifier),
     descriptionDisplay: task.description?.trim() || 'Not provided',
-    dueDateDisplay: task.dueDateTime ?? 'Not set',
+    createdDateDisplay: formatDateTime(task.createdDate) ?? 'Not set',
+    dueDateDisplay: formatDateTime(task.dueDateTime) ?? 'Not set',
   };
 }
 
@@ -239,11 +258,14 @@ export default function (app: Application): void {
       return;
     }
 
+    const date = new Date(form.dueDateTime);
+    const isoDate = date.toISOString();
+
     const payload: CreateTaskPayload = {
       caseNumber: form.caseNumber,
       title: form.title,
       status: defaultStatus,
-      dueDateTime: form.dueDateTime,
+      dueDateTime: isoDate,
       ...(form.description ? { description: form.description } : {}),
     };
 
