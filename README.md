@@ -22,3 +22,9 @@ Unit tests : `yarn test:unit`
 Route tests : `yarn test:routes`
 
 
+## Main features
+- **Browse tasks:** View each task's case number, title, description and status, with created and due dates shown in UK date and time format.
+- **Filter and navigate:** Filter tasks by status and browse results 10 at a time. The selected filter is retained as you move between pages.
+- **Create tasks:** Enter a case number, title and due date and time; a description is optional. New tasks start with an Open status.
+- **Manage tasks:** Open a task to view its details, change its status or delete it.
+- **Get feedback:** The interface shows empty states, success messages and errors.

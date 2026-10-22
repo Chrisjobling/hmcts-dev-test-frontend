@@ -113,8 +113,8 @@ describe('Home page', () => {
     expect(response.text).toContain('Second case description');
     expect(response.text).toContain('Open');
     expect(response.text).toContain('Closed');
-    expect(response.text).toContain('2026-10-20');
-    expect(response.text).toContain('2026-10-21');
+    expect(response.text).toContain('20 October 2026, 01:00');
+    expect(response.text).toContain('21 October 2026, 01:00');
     expect(response.text).toContain('Case number');
     expect(response.text).toContain('Description');
     expect(response.text).toContain('Status');
@@ -123,7 +123,7 @@ describe('Home page', () => {
     expect(response.text).toContain('Description (optional)');
     expect(response.text).not.toMatch(/<textarea[^>]*\brequired\b/);
     expect(response.text).toMatch(/<input(?=[^>]*name="dueDateTime")(?=[^>]*\brequired\b)[^>]*>/);
-    expect(response.text).toContain('2026-11-20T17:00:00Z');
+    expect(response.text).toContain('20 November 2026, 17:00');
     expect(response.text).toContain('Not set');
     expect(response.text).not.toMatch(/<th[^>]*>\s*ID\s*<\/th>/);
   });
@@ -351,7 +351,7 @@ describe('Home page', () => {
     expect(mockedAxiosGet).toHaveBeenCalledWith('http://localhost:4000/cases/task-003');
     expect(response.text).toContain('Task details');
     expect(response.text).toContain('Not provided');
-    expect(response.text).toContain('2026-11-21T17:00:00Z');
+    expect(response.text).toContain('21 November 2026, 17:00');
     expect(response.text).toContain('<option value="In-progress"');
     expect(response.text).not.toContain('In progress');
     expect(response.text).toContain('action="/tasks/task-003/status"');
@@ -368,7 +368,7 @@ describe('Home page', () => {
         caseNumber: 'CASE-004',
         title: 'New task',
         description: 'A newly created task',
-        dueDateTime: '2026-12-01T09:30',
+        dueDateTime: '2026-12-01T09:30:00.000Z',
       })
       .expect(303);
 
@@ -377,7 +377,7 @@ describe('Home page', () => {
       title: 'New task',
       description: 'A newly created task',
       status: 'Open',
-      dueDateTime: '2026-12-01T09:30',
+      dueDateTime: '2026-12-01T09:30:00.000Z',
     });
     expect(response.headers.location).toBe('/?notice=created');
   });
@@ -391,7 +391,7 @@ describe('Home page', () => {
       .send({
         caseNumber: 'CASE-005',
         title: 'Task without a description',
-        dueDateTime: '2026-12-02T09:30',
+        dueDateTime: '2026-12-02T09:30:00.000Z',
       })
       .expect(303);
 
@@ -399,7 +399,7 @@ describe('Home page', () => {
       caseNumber: 'CASE-005',
       title: 'Task without a description',
       status: 'Open',
-      dueDateTime: '2026-12-02T09:30',
+      dueDateTime: '2026-12-02T09:30:00.000Z',
     });
     expect(response.headers.location).toBe('/?notice=created');
   });
